@@ -126,8 +126,9 @@ jobs:
               continue
             fi
             # 先取当前文件 sha：有 sha 走 PUT 更新，没有则 POST 新建（2026-11-02 实测语义）
-            sha=$(curl -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" \
-                  | jq -r '.sha // empty')
+            # 注意：路径不存在时 Gitee 返回的是数组（目录列表形态），jq 必须先判类型再取 sha
+            meta=$(curl -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" || true)
+            sha=$(printf '%s' "$meta" | jq -r 'select(type=="object") | .sha // empty' 2>/dev/null || true)
             body=$(base64 -w0 < "$f")
             if [ -n "$sha" ]; then
               method=PUT
