@@ -3,43 +3,89 @@ name: Check TMDB IP
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 10,22 * * *'  # 每天 10:00 和 22:00 执行
+    - cron: '0 2,14 * * *'  # 北京时间 10:00 和 22:00（GitHub cron 按 UTC 执行，2/14 UTC = 10/22 点）
 
 permissions:
-  contents: write  # 确保有写入权限
+  contents: write
+
+concurrency:
+  group: check-tmdb-ip
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.10'
-        
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install --only-upgrade python3-pip
-        if [ -f requirements.txt ]; then sudo pip install -r requirements.txt; fi
-        
-    - name: Run Python script
-      run: |
-        sudo python check_tmdb_github_dnschecked.py
-        
-    - name: 提交更改
-      run: |
-         git config --global user.name 'GitHub Action'
-         git config --global user.email 'action@github.com'
-         git add README.md Tmdb_host_ipv4 Tmdb_host_ipv6
-         git commit -m "Update TMDB IP [action]" || echo "No changes to commit"
-      continue-on-error: true
+    timeout-minutes: 40
 
-    - name: Push changes
-      env:
-       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: git push origin main
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Python script (带 -G 参数，追加 GitHub hosts)
+        run: |
+          python -u check_tmdb_github_dnschecked.py -G 2>&1 | tee run.log
+
+      - name: 校验 -G 是否取到 GitHub 地址
+        if: always()
+        run: |
+          echo "===== 脚本 GitHub hosts 相关日志 ====="
+          grep -E "追加Github ip|获取GitHub hosts|所有Url项目失败|最新TMDB" run.log || echo "(无相关日志)"
+          echo
+          echo "===== Tmdb_host_ipv4 行数 / GitHub 条目数 ====="
+          wc -l < Tmdb_host_ipv4 || echo 0
+          grep -Eic "github\.com|githubusercontent\.com" Tmdb_host_ipv4 || echo "0 (未取到)"
+          echo "--- 前 15 条 GitHub 条目 ---"
+          grep -Ei "github\.com|githubusercontent\.com" Tmdb_host_ipv4 | head -n 15 || echo "(无)"
+          echo
+          echo "===== Tmdb_host_ipv6 行数 / GitHub 条目数 ====="
+          wc -l < Tmdb_host_ipv6 || echo 0
+          grep -Eic "github\.com|githubusercontent\.com" Tmdb_host_ipv6 || echo "0 (未取到)"
+          echo "--- 前 15 条 GitHub 条目 ---"
+          grep -Ei "github\.com|githubusercontent\.com" Tmdb_host_ipv6 | head -n 15 || echo "(无)"
+          echo
+          echo "===== TMDB 域名条目是否仍在 ====="
+          grep -Ec "tmdb\.org|themoviedb\.org|imdb\.com|thetvdb\.com|fanart\.tv|trakt\.tv" Tmdb_host_ipv4 || echo "0"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmdb-hosts-run-${{ github.run_number }}
+          path: |
+            Tmdb_host_ipv4
+            Tmdb_host_ipv6
+            README.md
+            run.log
+          if-no-files-found: warn
+
+      - name: Commit changes
+        id: commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md Tmdb_host_ipv4 Tmdb_host_ipv6
+          if git diff --cached --quiet; then
+            echo "无变更需要提交"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Update TMDB IP [skip ci]"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push changes
+        if: steps.commit.outputs.has_changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git push origin HEAD:${{ github.ref_name }}
