@@ -16,6 +16,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      # 提到 job 级是为了给下面的同步步骤做 if 判断：step 级 if 不允许直接引用 secrets 上下文
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      GITEE_OWNER: openclaw-test
+      GITEE_REPO: CheckTMDB-sync
+      GITEE_BRANCH: master
 
     steps:
       - name: Checkout repository
@@ -108,13 +114,8 @@ jobs:
         run: git push origin HEAD:${{ github.ref_name }}
 
       - name: 同步到 Gitee 备源
-        if: ${{ secrets.GITEE_TOKEN != '' }}
+        if: env.GITEE_TOKEN != ''
         continue-on-error: true
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITEE_OWNER: openclaw-test
-          GITEE_REPO: CheckTMDB-sync
-          GITEE_BRANCH: master
         run: |
           set -uo pipefail
           api="https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/contents"
