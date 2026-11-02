@@ -3,7 +3,7 @@ name: Check TMDB IP
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 2,14 * * *'  # 北京时间 10:00 和 22:00（GitHub cron 按 UTC 执行，2/14 UTC = 10/22 点）
+    - cron: '0 4 * * *'  # 每天北京时间 12:00（GitHub cron 按 UTC 执行，4:00 UTC = 12:00 CST）
 
 permissions:
   contents: write
