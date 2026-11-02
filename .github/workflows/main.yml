@@ -106,3 +106,51 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: git push origin HEAD:${{ github.ref_name }}
+
+      - name: 同步到 Gitee 备源
+        if: ${{ secrets.GITEE_TOKEN != '' }}
+        continue-on-error: true
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_OWNER: openclaw-test
+          GITEE_REPO: CheckTMDB-sync
+          GITEE_BRANCH: master
+        run: |
+          set -uo pipefail
+          api="https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/contents"
+          auth=(-H "Authorization: Bearer $GITEE_TOKEN")
+          for f in Tmdb_host_ipv4 Tmdb_host_ipv6; do
+            if [ ! -s "$f" ]; then
+              echo "::warning::$f 不存在或为空，跳过 Gitee 同步"
+              continue
+            fi
+            # 先取当前文件 sha：有 sha 走 PUT 更新，没有则 POST 新建（2026-11-02 实测语义）
+            sha=$(curl -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" \
+                  | jq -r '.sha // empty')
+            body=$(base64 -w0 < "$f")
+            if [ -n "$sha" ]; then
+              method=PUT
+              code=$(curl -s -o gitee_resp.json -w '%{http_code}' -X "$method" "$api/$f" \
+                     "${auth[@]}" -d "branch=$GITEE_BRANCH" -d "sha=$sha" \
+                     -d "message=sync $f [skip ci]" --data-urlencode "content=$body")
+            else
+              method=POST
+              code=$(curl -s -o gitee_resp.json -w '%{http_code}' -X "$method" "$api/$f" \
+                     "${auth[@]}" -d "branch=$GITEE_BRANCH" \
+                     -d "message=init $f [skip ci]" --data-urlencode "content=$body")
+            fi
+            echo "$f: $method -> HTTP $code"
+            if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+              echo "::warning::Gitee 同步 $f 失败 (HTTP $code): $(head -c 200 gitee_resp.json | tr -d '\r\n')"
+              continue
+            fi
+            # 回读校验：确认 Gitee 上的字节与本地一致
+            got=$(curl -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" \
+                  | jq -r '.content // empty' | tr -d '\n' | base64 -d 2>/dev/null | sha256sum | cut -d' ' -f1)
+            want=$(sha256sum "$f" | cut -d' ' -f1)
+            if [ "$got" = "$want" ]; then
+              echo "Gitee 回读校验一致: $f"
+            else
+              echo "::warning::Gitee 回读校验不一致: $f (gitee=$got local=$want)"
+            fi
+          done
