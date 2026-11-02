@@ -34,7 +34,9 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run Python script (带 -G 参数，追加 GitHub hosts)
+        shell: bash
         run: |
+          set -eo pipefail
           python -u check_tmdb_github_dnschecked.py -G 2>&1 | tee run.log
 
       - name: 校验 -G 是否取到 GitHub 地址
@@ -57,6 +59,21 @@ jobs:
           echo
           echo "===== TMDB 域名条目是否仍在 ====="
           grep -Ec "tmdb\.org|themoviedb\.org|imdb\.com|thetvdb\.com|fanart\.tv|trakt\.tv" Tmdb_host_ipv4 || echo "0"
+          echo
+          echo "===== 结果判定 ====="
+          if grep -q "追加Github ip" run.log 2>/dev/null && grep -Eqi "github\.com|githubusercontent\.com" Tmdb_host_ipv4; then
+            echo "::notice::-G 本次实际抓取到 GitHub hosts 并写入 Tmdb_host_ipv4 / Tmdb_host_ipv6"
+          elif grep -Eqi "github\.com|githubusercontent\.com" Tmdb_host_ipv4; then
+            echo "::notice::本次 TMDB 地址无变化，脚本跳过写入（write_host_file 未触发），文件中的 GitHub 条目沿用上轮结果"
+          else
+            echo "::warning::-G 未取到 GitHub 条目：4 个 hosts 源在 runner 上全部失败，本次仅更新 TMDB 地址"
+          fi
+          if grep -q "所有Url项目失败" run.log 2>/dev/null; then
+            echo "::warning::get_github_hosts() 全部源失败，请检查 hosts.gitcdn.top 等上游是否变更"
+          fi
+          if grep -q "Network is unreachable" run.log 2>/dev/null; then
+            echo "::warning::runner 无 IPv6 出口，IPv6 地址未经测速，脚本按 DNS 返回的第一个 IP 兜底写入 Tmdb_host_ipv6"
+          fi
 
       - name: Upload results
         if: always()
