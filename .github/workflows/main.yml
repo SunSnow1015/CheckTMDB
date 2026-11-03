@@ -120,39 +120,59 @@ jobs:
           set -uo pipefail
           api="https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/contents"
           auth=(-H "Authorization: Bearer $GITEE_TOKEN")
+          # 2026-11-02 实测：runner 到 gitee.com 的 TLS 链路偶发 handshake 失败（curl exit 35），
+          # 而 Actions 的 run 是用 /usr/bin/bash -e 起的，任何一条未被吃掉的 curl 失败都会中断整个 for 循环，
+          # 结果是排在后面的 Tmdb_host_ipv6 直接不同步，而 continue-on-error 又把这一步显示成 success。
+          # 所以：每条 curl 都要带超时+重试，并且都要能吃掉失败，绝不靠脚本中断来暴露问题。
+          gt=(--connect-timeout 10 --max-time 30 --retry 2 --retry-delay 5 --retry-all-errors --retry-connrefused)
+          ok=0
+          bad=""
           for f in Tmdb_host_ipv4 Tmdb_host_ipv6; do
             if [ ! -s "$f" ]; then
               echo "::warning::$f 不存在或为空，跳过 Gitee 同步"
+              bad="$bad ${f}(缺失)"
               continue
             fi
             # 先取当前文件 sha：有 sha 走 PUT 更新，没有则 POST 新建（2026-11-02 实测语义）
             # 注意：路径不存在时 Gitee 返回的是数组（目录列表形态），jq 必须先判类型再取 sha
-            meta=$(curl -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" || true)
+            meta=$(curl "${gt[@]}" -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" 2>/dev/null || true)
             sha=$(printf '%s' "$meta" | jq -r 'select(type=="object") | .sha // empty' 2>/dev/null || true)
             body=$(base64 -w0 < "$f")
+            cerr=0
             if [ -n "$sha" ]; then
               method=PUT
-              code=$(curl -s -o gitee_resp.json -w '%{http_code}' -X "$method" "$api/$f" \
+              code=$(curl "${gt[@]}" -s -o gitee_resp.json -w '%{http_code}' -X "$method" "$api/$f" \
                      "${auth[@]}" -d "branch=$GITEE_BRANCH" -d "sha=$sha" \
-                     -d "message=sync $f [skip ci]" --data-urlencode "content=$body")
+                     -d "message=sync $f [skip ci]" --data-urlencode "content=$body") || cerr=$?
             else
               method=POST
-              code=$(curl -s -o gitee_resp.json -w '%{http_code}' -X "$method" "$api/$f" \
+              code=$(curl "${gt[@]}" -s -o gitee_resp.json -w '%{http_code}' -X "$method" "$api/$f" \
                      "${auth[@]}" -d "branch=$GITEE_BRANCH" \
-                     -d "message=init $f [skip ci]" --data-urlencode "content=$body")
+                     -d "message=init $f [skip ci]" --data-urlencode "content=$body") || cerr=$?
             fi
-            echo "$f: $method -> HTTP $code"
+            echo "$f: $method -> HTTP $code (curl_exit=$cerr)"
             if [ "$code" != "200" ] && [ "$code" != "201" ]; then
-              echo "::warning::Gitee 同步 $f 失败 (HTTP $code): $(head -c 200 gitee_resp.json | tr -d '\r\n')"
+              echo "::warning::Gitee 写入 $f 失败 (HTTP $code, curl_exit=$cerr): $(head -c 200 gitee_resp.json 2>/dev/null | tr -d '\r\n')"
+              bad="$bad ${f}(写入$code/$cerr)"
               continue
             fi
-            # 回读校验：确认 Gitee 上的字节与本地一致
-            got=$(curl -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" \
-                  | jq -r '.content // empty' | tr -d '\n' | base64 -d 2>/dev/null | sha256sum | cut -d' ' -f1)
+            # 回读校验：先把响应单独取回再解析，解析失败也不会连累脚本
+            rb=$(curl "${gt[@]}" -s "${auth[@]}" -G --data-urlencode "ref=$GITEE_BRANCH" "$api/$f" 2>/dev/null || true)
+            got=$(printf '%s' "$rb" | jq -r '.content // empty' 2>/dev/null | tr -d '\n' | base64 -d 2>/dev/null | sha256sum | cut -d' ' -f1 || true)
             want=$(sha256sum "$f" | cut -d' ' -f1)
-            if [ "$got" = "$want" ]; then
-              echo "Gitee 回读校验一致: $f"
+            if [ -n "$got" ] && [ "$got" = "$want" ]; then
+              echo "Gitee 回读校验一致: $f ($got)"
+              ok=$((ok+1))
             else
-              echo "::warning::Gitee 回读校验不一致: $f (gitee=$got local=$want)"
+              echo "::warning::Gitee 回读校验不一致: $f (gitee=${got:-取回失败} local=$want)"
+              bad="$bad ${f}(回读)"
             fi
           done
+          # 小结一定要打印出来：continue-on-error 让这步永远显示 success，只有这里的计数和 annotation 能证明它真的同步了
+          echo "===== Gitee 同步小结 ====="
+          echo "写入成功且回读逐字节一致: $ok/2"
+          if [ -n "$bad" ]; then
+            echo "::warning::Gitee 备源本次未全部同步:$bad（GitHub 主链路不受影响；NAS 只消费 Tmdb_host_ipv4，且拉取校验失败时会继续沿用上一份 hosts）"
+          else
+            echo "Gitee 备源两个文件均已同步并通过 sha256 回读校验"
+          fi
