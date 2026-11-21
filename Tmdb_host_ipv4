@@ -1,33 +1,33 @@
 # Tmdb Hosts Start
-143.204.1.109               tmdb.org
-3.175.34.124                api.tmdb.org
-3.169.173.123               files.tmdb.org
-3.169.173.116               themoviedb.org
-3.169.173.60                api.themoviedb.org
-3.169.173.116               www.themoviedb.org
-18.161.6.123                auth.themoviedb.org
-143.244.49.180              image.tmdb.org
-143.244.50.212              images.tmdb.org
-44.215.137.99               imdb.com
+143.204.1.119               tmdb.org
+3.175.34.102                api.tmdb.org
+3.169.173.74                files.tmdb.org
+3.169.173.45                themoviedb.org
+3.169.173.63                api.themoviedb.org
+3.169.173.76                www.themoviedb.org
+18.161.6.76                 auth.themoviedb.org
+143.204.1.65                image.tmdb.org
+143.244.49.179              images.tmdb.org
+98.82.155.134               imdb.com
 13.33.164.215               www.imdb.com
 13.33.164.215               secure.imdb.com
 13.33.164.215               s.media-imdb.com
 44.215.137.99               us.dd.imdb.com
 13.33.164.215               www.imdb.to
 98.82.155.134               origin-www.imdb.com
-13.33.163.63                ia.media-imdb.com
+3.169.163.149               ia.media-imdb.com
 3.169.171.81                thetvdb.com
 13.33.163.76                api.thetvdb.com
-151.101.129.16              ia.media-imdb.com
-151.101.129.16              f.media-amazon.com
-18.161.6.13                 imdb-video.media-imdb.com
+3.169.163.149               ia.media-imdb.com
+151.101.1.16                f.media-amazon.com
+18.161.6.84                 imdb-video.media-imdb.com
 148.113.196.166             webservice.fanart.tv
-172.67.74.146               images.fanart.tv
-158.69.210.98               assets.fanart.tv
+104.26.12.126               images.fanart.tv
+158.69.209.125              assets.fanart.tv
 104.26.12.126               fanart.tv
-104.20.14.80                api.trakt.tv
+104.20.13.80                api.trakt.tv
 104.20.13.80                trakt.tv
-# Update time: 2026-11-20T20:26:55+08:00
+# Update time: 2026-11-21T20:00:41+08:00
 # IPv4 Update url: https://raw.githubusercontent.com/cnwikee/CheckTMDB/refs/heads/main/Tmdb_host_ipv4
 # IPv6 Update url: https://raw.githubusercontent.com/cnwikee/CheckTMDB/refs/heads/main/Tmdb_host_ipv6
 # Star me: https://github.com/cnwikee/CheckTMDB
@@ -35,43 +35,43 @@
 
 # fetch-github-hosts begin
 140.82.113.26               alive.github.com
-140.82.114.26               live.github.com
-185.199.110.215             github.githubassets.com
-140.82.113.21               central.github.com
-185.199.108.133             desktop.githubusercontent.com
+140.82.113.26               live.github.com
+185.199.109.215             github.githubassets.com
+140.82.114.22               central.github.com
+185.199.109.133             desktop.githubusercontent.com
 185.199.108.133             camo.githubusercontent.com
-185.199.111.133             github.map.fastly.net
+185.199.108.133             github.map.fastly.net
 140.248.165.194             github.global.ssl.fastly.net
 20.205.243.166              gist.github.com
-185.199.108.153             github.io
+185.199.109.153             github.io
 20.205.243.166              github.com
 192.0.66.2                  github.blog
 20.205.243.168              api.github.com
 185.199.110.133             raw.githubusercontent.com
-185.199.108.133             user-images.githubusercontent.com
-185.199.108.133             favicons.githubusercontent.com
-185.199.109.133             avatars5.githubusercontent.com
-185.199.111.133             avatars4.githubusercontent.com
-185.199.111.133             avatars3.githubusercontent.com
-185.199.108.133             avatars2.githubusercontent.com
-185.199.110.133             avatars1.githubusercontent.com
-185.199.108.133             avatars0.githubusercontent.com
-185.199.111.133             avatars.githubusercontent.com
-20.6.7.16                   codeload.github.com
-16.15.254.65                github-cloud.s3.amazonaws.com
-16.182.101.34               github-com.s3.amazonaws.com
-16.15.254.171               github-production-release-asset-2e65be.s3.amazonaws.com
-52.217.46.184               github-production-user-asset-6210df.s3.amazonaws.com
-52.217.46.184               github-production-repository-file-5c1aeb.s3.amazonaws.com
-185.199.110.153             githubstatus.com
+185.199.111.133             user-images.githubusercontent.com
+185.199.109.133             favicons.githubusercontent.com
+185.199.108.133             avatars5.githubusercontent.com
+185.199.108.133             avatars4.githubusercontent.com
+185.199.110.133             avatars3.githubusercontent.com
+185.199.109.133             avatars2.githubusercontent.com
+185.199.108.133             avatars1.githubusercontent.com
+185.199.111.133             avatars0.githubusercontent.com
+185.199.108.133             avatars.githubusercontent.com
+20.205.243.165              codeload.github.com
+52.216.41.66                github-cloud.s3.amazonaws.com
+16.15.156.220               github-com.s3.amazonaws.com
+16.182.24.66                github-production-release-asset-2e65be.s3.amazonaws.com
+16.182.73.130               github-production-user-asset-6210df.s3.amazonaws.com
+16.15.255.69                github-production-repository-file-5c1aeb.s3.amazonaws.com
+185.199.111.153             githubstatus.com
 140.82.114.18               github.community
 20.43.185.14                github.dev
-140.82.112.22               collector.github.com
+140.82.114.22               collector.github.com
 13.107.42.16                pipelines.actions.githubusercontent.com
-185.199.108.133             media.githubusercontent.com
+185.199.111.133             media.githubusercontent.com
 185.199.111.133             cloud.githubusercontent.com
-185.199.108.133             objects.githubusercontent.com
-# last fetch time: 2026-11-20 20:17:52
+185.199.109.133             objects.githubusercontent.com
+# last fetch time: 2026-11-21 19:17:53
 # update url: https://hosts.gitcdn.top/hosts.txt
 # fetch-github-hosts end
 
